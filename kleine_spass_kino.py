@@ -91,9 +91,9 @@ class KinoSeat(Seat):
     def book_seat(self, customer:Customer): 
         """Book a seat, raise an error if seat already booked"""
         if not isinstance(customer, Customer):
-            raise Exception(f"!!! Only a Customer object can book a seat.")
+            raise TypeError(f"!!! Customer must be a Customer instance.")
         if self.is_booked(): 
-            raise Exception(f"!!! Seat already booked by {self.__customer.name}.")
+            raise ValueError(f"!!! Seat is already booked by {self.__customer.name} #{self.__customer.id}.")
         self.__customer = customer
 
     def has_gift(self): 
@@ -102,7 +102,7 @@ class KinoSeat(Seat):
     def set_gift(self, gift:Gift):
         """Set the Gift, raise an error if not a Gift instance"""
         if not isinstance(gift, Gift): 
-            raise Exception("!!! Not a Gift object.")
+            raise TypeError(f"!!! gift must be a Gift instance.")
         self.__gift = gift
         
     def claim_gift(self):
@@ -128,11 +128,16 @@ class Kino2DSeatManager(SeatManager):
         self.__gift_count:int = 0
     
     def __map_seat(self, key:str):
-        alphabet = ""
-        numeric = "0"
-        for k in key:
-            if k.isalpha(): alphabet += k.upper()
-            elif k.isdigit(): numeric += k
+        if not isinstance(key, str):
+            raise TypeError(f"!!! Seat ID must be a string.")
+        
+        key = key.strip().upper()
+        split_at = next((i for i, char in enumerate(key) if char.isdigit()), -1)
+        if split_at <= 0 or not key[:split_at].isalpha() or not key[split_at:].isdigit():
+            raise ValueError(f"!!! Invalid seat ID {key}; expected letters followed by a number, e.g. 'A1'.")
+        
+        alphabet = key[:split_at]
+        numeric = "0" + key[split_at:]
         
         row = 0
         # A is 0, Z is 25, AA is 26 ...
@@ -158,19 +163,14 @@ class Kino2DSeatManager(SeatManager):
         """Return the reference to a Seat object, what is returned is mutable so be careful"""
         row, col = self.__map_seat(id)
         if not (0 <= row < self.__rows and 0 <= col < self.__cols):
-            raise Exception(f"!!! Seat {id} doesn't exist.")
+            raise ValueError(f"!!! Seat ID {id} is outside the seating area ({self.__rows} rows x {self.__cols} columns).")
         return self.__seat_list[row][col]
 
     def book_seat(self, id:str, customer:Customer):
-        """Handle booking a seat and exception handling as well"""
-        seat = None
-        try: 
-            seat:KinoSeat = self.get_seat(id)
-            seat.book_seat(customer)
-            print(f"Successfully booked seat {id} for {customer.name}.")
-        except Exception as err: 
-            print(err)
-            return
+        """Book a seat; booking errors are handled by the caller."""
+        seat:KinoSeat = self.get_seat(id)
+        seat.book_seat(customer)
+        print(f"Successfully booked seat {id} for {customer.name} #{customer.id}.")
 
     def clear_seats(self):
         for row in self.__seat_list:
@@ -180,6 +180,8 @@ class Kino2DSeatManager(SeatManager):
         
     def set_random_gifted_seats(self, gifted_seat_count:int):
         """Set the randomized gifted seats"""
+        if not isinstance(gifted_seat_count, int):
+            raise TypeError(f"!!! gifted_seat_count must be an integer.")
         gifted_seat_count = min(gifted_seat_count, self.__seat_count)
         self.__gift_count = gifted_seat_count
         while gifted_seat_count > 0:
@@ -271,22 +273,22 @@ class Ticket():
     def print_ticket(self):
         title_str    = "KinoKleinSpass"
         customer_str = f"Customer name : {self.__customer.name} #{self.__customer.id}"
-        seat_str     = f"Seat number   : {','.join(str(key) for key in self.__booked_seats.keys())}"
+        seat_str     = f"Seat number   : {', '.join(str(key) for key in self.__booked_seats.keys())}"
 
         gift_str = []
         for seat_id, seat in self.__booked_seats.items():
             gift = seat.claim_gift()
             if gift is None: continue
-            gift_str.append(f"CONGRATS you got {gift} x1!")
+            gift_str.append(f"CONGRATS you got {gift} x1 from seat {seat_id} !")
 
-        print("#" * 56)
-        print(f"## {title_str:^50} ##")
-        print(f"## {customer_str:^50} ##")
-        print(f"## {seat_str:^50} ##")
+        print("#" * 60)
+        print(f"## {title_str:<54} ##")
+        print(f"## {customer_str:<54} ##")
+        print(f"## {seat_str:<54} ##")
         if gift_str:
             for s in gift_str:
-                print(f"## {s:^50} ##")
-        print("#" * 56)
+                print(f"## {s:^54} ##")
+        print("#" * 60)
 
 class Kino:
     def __init__(self, seat_rows:int, seat_cols:int):
@@ -317,15 +319,16 @@ class Kino:
                     seat_id = seat_str.strip()
                     try:
                         if seat_id in booked_seats:
-                            raise Exception(f"Cannot book the same seats {seat_id} repeatedly.")
+                            raise ValueError(f"!!! Cannot book seat {seat_id} repeatedly.")
                         
-                        seat = self.seat_manager.get_seat(seat_id)
+                        seat = self.seat_manager.get_seat(seat_id) 
                         if seat.is_booked():
-                            raise Exception(f"!!! Seat {seat_id} is already booked.") # !!!
+                            booked_by = seat.get_customer()
+                            raise ValueError(f"!!! Seat {seat_id} is already booked by {booked_by.name} #{booked_by.id}.")
                         self.seat_manager.book_seat(seat_id, customer)
                         # if successfully booked a seat
                         booked_seats[seat_id] = seat
-                    except Exception as err:
+                    except (TypeError, ValueError) as err: 
                         print(err)
                         continue
 
@@ -347,7 +350,7 @@ class Kino:
                 self.seat_manager.set_random_gifted_seats(gifted_seat_count)
 
             elif choice == "4":
-                print("Thank you.")
+                print("End of session.")
                 break
 
             else:
