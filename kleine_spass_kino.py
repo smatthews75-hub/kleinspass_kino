@@ -1,5 +1,12 @@
+# https://github.com/smatthews75-hub/kleinspass_kino
+
+# by team Kino Cicak 5 Balon 5 Dinding Meledak :
+# Stephen Matthews      252404175
+# Neil Yapson           252407832
+# Joshua Christopher    252302347
+
 # SET DEFAULT GIFT SEATS
-G_GIFTED_SEAT_COUNT:int = 5 # temporarily set to 5
+G_GIFTED_SEAT_COUNT:int = 5
 # SET SEAT DIMENSIONS
 G_SEAT_ROWS:int = 4
 G_SEAT_COLS:int = 6
@@ -33,7 +40,7 @@ class Gift(ABC): # Actual demonstration of interface contracts
         
     
 
-class Seat(ABC): # Contracts for later IMAX seat implementations
+class Seat(ABC): # Contracts for later IMAX seat implementations or smth
     """Interface for Seat implementations"""
     @abstractmethod # return booked status
     def is_booked(self) -> bool: 
@@ -58,7 +65,7 @@ class Seat(ABC): # Contracts for later IMAX seat implementations
         pass
 
 
-class SeatManager(ABC): # Contracts for later 1D seatmanager implementations
+class SeatManager(ABC): # Contracts for later more storage effective 1D array seatmanager implementations
     """Interface for SeatManagers needed by Kino clasess"""
     @abstractmethod # return seat objects from seat array
     def get_seat(self, id:str) -> Seat: 
